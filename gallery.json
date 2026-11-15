@@ -1,0 +1,22 @@
+{
+  "title": "Leo's Art Gallery",
+  "artist": "Leo, Pre-K",
+  "welcome": "Walk the hall, pick a favorite, and pledge to bring a copy home.",
+
+  "email": "your-email@example.com",
+  "cause": "",
+  "howToDonate": "",
+  "suggestedDonation": 5,
+
+  "totals": {
+    "pledges": 0,
+    "donated": 0,
+    "volunteerHours": 0
+  },
+
+  "pretendGuests": 5,
+
+  "art": [],
+
+  "guestbook": []
+}
