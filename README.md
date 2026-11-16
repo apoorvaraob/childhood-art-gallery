@@ -30,6 +30,18 @@ Open `gallery.json` on GitHub, press the pencil icon, edit, and press **Commit c
 | `suggestedDonation` | A number, with no dollar sign. Use `0` to hide it. |
 | `pretendGuests` | How many cartoon visitors wander the hall, from `0` to `8`. |
 
+## Let guests send messages without opening their email (recommended)
+
+By default, the pledge and guest book buttons open the guest's own email app. To have the gallery send messages straight to your inbox instead, add a free Web3Forms key:
+
+1. Go to web3forms.com and enter the email address that should receive the messages.
+2. An access key arrives in that inbox. Copy it.
+3. Edit `gallery.json` and paste it between the quotes: `"formKey": "paste-your-key-here"`.
+
+After that, guests fill in the form in the gallery and press **Send**. Each pledge and guest book message reaches you as an email from Web3Forms. Pledges for a piece ask for the guest's email address so you can reply with the picture.
+
+The free plan covers 250 messages a month. The key is meant to be public, so it is fine in this file. Messages pass through Web3Forms on their way to you. If a send ever fails, the guest is offered the email-app and copy options instead.
+
 ## Add a piece of art
 
 1. Save a web-size copy of the scan: about 1600 pixels on the long side, JPG, under 500 KB. Keep the full-resolution original to yourself. This repository is public, so anything you upload here can be downloaded by anyone.

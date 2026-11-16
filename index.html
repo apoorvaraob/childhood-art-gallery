@@ -55,6 +55,7 @@ button,input,textarea{font:inherit;color:inherit}
 .btn.blue{background:var(--blue);color:#fff}
 .btn.small{padding:6px 10px;font-size:14px;border-radius:10px;box-shadow:2px 2px 0 var(--ink)}
 .btn.sq{width:46px;height:46px;padding:0;font-size:22px}
+.btn[disabled]{opacity:.55;cursor:default}
 
 #panel{position:absolute;z-index:4;left:0;right:0;bottom:0;max-height:88%;display:flex;flex-direction:column;background:var(--paper);border-top:2px solid var(--ink);border-radius:18px 18px 0 0}
 #panel>header{display:flex;align-items:center;gap:10px;padding:12px 16px 8px}
@@ -164,7 +165,7 @@ const okFile=f=>typeof f==='string'&&/^[\w\-. /()]+\.(jpe?g|png|webp|gif)$/i.tes
 const okEmail=e=>typeof e==='string'&&/^[^\s@<>?&]+@[^\s@<>?&]+\.[a-z]{2,}$/i.test(e)&&!/example\.com$/i.test(e)?e:'';
 
 /* ---------- state ---------- */
-const DEF={title:"Leo's Art Gallery",artist:'Leo, Pre-K',welcome:'Walk the hall, pick a favorite, and pledge to bring a copy home.',email:'',cause:'',howToDonate:'',suggested:5,pretendGuests:5,pledges:0,donated:0,hours:0};
+const DEF={formKey:'',title:"Leo's Art Gallery",artist:'Leo, Pre-K',welcome:'Walk the hall, pick a favorite, and pledge to bring a copy home.',email:'',cause:'',howToDonate:'',suggested:5,pretendGuests:5,pledges:0,donated:0,hours:0};
 const S={cfg:Object.assign({},DEF),book:[],arts:[],loaded:false,view:null,top:'walk',no3d:false};
 function samples(){
   return[['The sun has legs','Crayon on printer paper'],['Rainbow, mostly','Marker on construction paper'],['Us and the house','Crayon and pencil'],['A very fast scribble','Mixed crayons']]
@@ -180,7 +181,7 @@ function openView(name,arg){S.view={name,arg};renderPanel();}
 function closePanel(){S.view=null;$('panel').hidden=true;setTop('walk');}
 function setTop(n){S.top=n;for(const b of document.querySelectorAll('#nav .tab'))b.setAttribute('aria-current',b.dataset.go===n?'true':'false');try{if(location.hash!=='#'+n)location.hash=n;}catch(e){}}
 function go(n){setTop(n);if(n==='walk'){S.view=null;$('panel').hidden=true;}else openView(n);}
-function refresh(){if(S.view&&S.view.name!=='pledge'&&S.view.name!=='sign')renderPanel();}
+function refresh(){if(S.view&&!['pledge','sign','thanks'].includes(S.view.name))renderPanel();}
 const kid=()=>str(S.cfg.artist.split(',')[0],20).trim()||'the artist';
 function today(){const d=new Date(),z=n=>(n<10?'0':'')+n;return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());}
 const bookLine=(n,m)=>JSON.stringify({name:n,date:today(),message:m});
@@ -191,6 +192,16 @@ function renderPanel(){
 }
 const findArt=id=>shown().find(a=>a.id===id);
 const VIEWS={};
+async function sendForm(subject,fields){
+  const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify(Object.assign({access_key:S.cfg.formKey,subject:subject,from_name:S.cfg.title},fields))});
+  const j=await r.json().catch(()=>({}));if(!r.ok||!j.success)throw new Error('send failed');
+}
+const okAddr=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+VIEWS.thanks=function(arg){
+  return{title:'Thank you!',body:[h('p',{text:arg&&arg.text||'Sent.'}),
+    h('div',{class:'row'},h('button',{class:'btn go',onclick:()=>go('walk')},'Back to the hall'),h('button',{class:'btn',onclick:()=>go('guests')},'See the guest book'))]};
+};
 
 VIEWS.art=function(){
   const list=shown();
@@ -220,9 +231,10 @@ VIEWS.pledge=function(id){
     amt=h('input',{id:'p-amt',inputmode:'decimal',maxlength:8,placeholder:cfg.suggested?String(cfg.suggested):'0'}),
     hrs=h('input',{id:'p-hrs',inputmode:'decimal',maxlength:5,placeholder:'0'}),
     note=h('textarea',{id:'p-note',maxlength:300,placeholder:'Optional'}),
-    gb=h('input',{type:'checkbox',id:'p-gb',checked:true});
+    gb=h('input',{type:'checkbox',id:'p-gb',checked:true}),key=cfg.formKey,
+    em=h('input',{id:'p-email',type:'email',maxlength:120,autocomplete:'email',inputmode:'email'});
   const text=()=>{const d=num(amt.value),hr=num(hrs.value),lines=['Hello! I’d like to pledge for '+what+' from '+cfg.title+'.',''];
-    if(name.value.trim())lines.push('Name: '+name.value.trim());
+    if(name.value.trim())lines.push('Name: '+name.value.trim());if(key&&em.value.trim())lines.push('Email: '+em.value.trim());
     if(d)lines.push('Donation pledge: '+money(d));if(hr)lines.push('Volunteer hours pledge: '+hr);
     if(note.value.trim())lines.push('Word for '+kid()+': '+note.value.trim());lines.push('Date: '+today());
     if(a)lines.push('','Piece: '+(a.title||'Untitled'),'Picture file: '+a.file,'Please email me the full-resolution picture.');
@@ -230,17 +242,30 @@ VIEWS.pledge=function(id){
   const subject=()=>'Pledge for '+(a?(a.title||'Untitled'):cfg.title);
   const check=e=>{if(!num(amt.value)&&!num(hrs.value)){e.preventDefault();toast('Add a dollar amount or volunteer hours.');return false;}return true;};
   const mail=to&&h('a',{class:'btn go',href:'mailto:'+to,onclick:e=>{if(!check(e))return;e.currentTarget.href='mailto:'+to+'?subject='+encodeURIComponent(subject())+'&body='+encodeURIComponent(text());}},'Open my email with this pledge');
+  const fb=h('div',{class:'row',hidden:!!key},mail,h('button',{class:'btn',onclick:e=>{if(check(e))copyText((to?'To: '+to+'\nSubject: '+subject()+'\n\n':'')+text());}},key?'Copy my pledge':'Copy my pledge instead'));
+  const direct=key&&h('button',{class:'btn go',onclick:async e=>{
+    if(!check(e))return;const addr=em.value.trim();
+    if(a&&!okAddr(addr)){toast('Add your email so the picture can be sent to you.');return;}
+    if(addr&&!okAddr(addr)){toast('That email address doesn\u2019t look right.');return;}
+    direct.disabled=true;direct.textContent='Sending\u2026';
+    try{const f={name:name.value.trim()||'A guest',message:text()};if(addr)f.email=addr;await sendForm(subject(),f);
+      openView('thanks',{text:a?'Your pledge is on its way. The curator will email you the picture.':'Your pledge is on its way. Thank you for supporting '+kid()+'.'});}
+    catch(err){direct.disabled=false;direct.textContent='Send my pledge';fb.hidden=false;toast('That didn\u2019t send. Try again, or use the options below.');}
+  }},'Send my pledge');
   return{title:'Pledge for '+what,body:[
     a&&h('img',{class:'pic',src:a.src,alt:a.title||'Artwork',style:'max-height:22vh'}),
     h('div',{class:'step'},h('b',{text:'1'}),h('div',{class:'stack'},h('span',{class:'sec',text:'Your pledge'}),
       h('div',{class:'two'},h('label',{class:'field'},h('span',{text:'Donation ($)'}),amt),h('label',{class:'field'},h('span',{text:'Volunteer hours'}),hrs)),
       h('p',{class:'muted',text:'Either one, or both.'+(num(cfg.suggested)?' Suggested donation: '+money(cfg.suggested)+'.':'')}),
       cfg.cause&&h('p',{class:'muted',text:'Pledges support: '+cfg.cause}),
-      h('label',{class:'field'},h('span',{text:'Your name'}),name),h('label',{class:'field'},h('span',{text:'An encouraging word for '+kid()}),note),
+      h('label',{class:'field'},h('span',{text:'Your name'}),name),
+      key&&h('label',{class:'field'},h('span',{text:a?'Your email (so the picture can be sent to you)':'Your email (optional)'}),em),
+      h('label',{class:'field'},h('span',{text:'An encouraging word for '+kid()}),note),
       h('label',{class:'check'},gb,'Add my name and message to the guest book'))),
     h('div',{class:'step'},h('b',{text:'2'}),h('div',{class:'stack'},h('span',{class:'sec',text:'Send it'}),
-      to?h('p',{},'Your pledge goes by email to ',h('b',{text:to}),'. Nothing is stored on this site.'):h('p',{class:'note',text:'The curator hasn’t added an email address yet. Copy your pledge and send it to them directly.'}),
-      h('div',{class:'row'},mail,h('button',{class:'btn',onclick:e=>{if(check(e))copyText((to?'To: '+to+'\nSubject: '+subject()+'\n\n':'')+text());}},'Copy my pledge instead')),
+      key?h('p',{text:'Your pledge goes straight to the curator. Nothing else is needed from you.'}):
+        to?h('p',{},'Your pledge goes by email to ',h('b',{text:to}),'. Nothing is stored on this site.'):h('p',{class:'note',text:'The curator hasn\u2019t added an email address yet. Copy your pledge and send it to them directly.'}),
+      direct,fb,
       h('p',{class:'muted',text:a?'The curator replies with the full-resolution picture.':'The curator replies to confirm.'}))),
     cfg.howToDonate&&h('div',{class:'step'},h('b',{text:'3'}),h('div',{class:'stack'},h('span',{class:'sec',text:'Keep your pledge'}),h('p',{class:'pre',text:cfg.howToDonate})))
   ]};
@@ -278,14 +303,20 @@ VIEWS.sign=function(){
   const to=okEmail(S.cfg.email),name=h('input',{id:'s-name',maxlength:60,autocomplete:'name'}),msg=h('textarea',{id:'s-msg',maxlength:300,placeholder:'Keep drawing! I love your colors.'});
   const text=()=>['Please add me to the guest book of '+S.cfg.title+'.','','Name: '+name.value.trim(),'Date: '+today(),'Word for '+kid()+': '+msg.value.trim(),'','Guest book entry (curator: paste into gallery.json):',bookLine(name.value.trim(),msg.value.trim())].join('\n');
   const check=e=>{if(!name.value.trim()){e.preventDefault();toast('Add your name.');return false;}return true;};
-  const subject=()=>'Guest book: '+name.value.trim();
+  const subject=()=>'Guest book: '+name.value.trim();const key=S.cfg.formKey;
+  const fb=h('div',{class:'row',hidden:!!key},to&&h('a',{class:'btn'+(key?'':' go'),href:'mailto:'+to,onclick:e=>{if(!check(e))return;e.currentTarget.href='mailto:'+to+'?subject='+encodeURIComponent(subject())+'&body='+encodeURIComponent(text());}},'Open my email to sign'),
+    h('button',{class:'btn',onclick:e=>{if(check(e))copyText((to?'To: '+to+'\nSubject: '+subject()+'\n\n':'')+text());}},key?'Copy my signature':'Copy my signature instead'));
+  const direct=key&&h('button',{class:'btn go',onclick:async e=>{
+    if(!check(e))return;direct.disabled=true;direct.textContent='Sending\u2026';
+    try{await sendForm(subject(),{name:name.value.trim(),message:text()});openView('thanks',{text:'Your message is on its way to '+kid()+'. It shows in the guest book once the curator adds it.'});}
+    catch(err){direct.disabled=false;direct.textContent='Send to '+kid();fb.hidden=false;toast('That didn\u2019t send. Try again, or use the options below.');}
+  }},'Send to '+kid());
   return{title:'Sign the guest book',body:[
     h('label',{class:'field'},h('span',{text:'Your name'}),name),
     h('label',{class:'field'},h('span',{text:'An encouraging word for '+kid()}),msg),
-    to?h('p',{},'Your signature goes by email to ',h('b',{text:to}),'. The curator adds it to the book.'):h('p',{class:'note',text:'The curator hasn\u2019t added an email address yet. Copy your signature and send it to them directly.'}),
-    h('div',{class:'row'},to&&h('a',{class:'btn go',href:'mailto:'+to,onclick:e=>{if(!check(e))return;e.currentTarget.href='mailto:'+to+'?subject='+encodeURIComponent(subject())+'&body='+encodeURIComponent(text());}},'Open my email to sign'),
-      h('button',{class:'btn',onclick:e=>{if(check(e))copyText((to?'To: '+to+'\nSubject: '+subject()+'\n\n':'')+text());}},'Copy my signature instead'),
-      h('button',{class:'btn',onclick:()=>go('guests')},'Back'))
+    key?h('p',{text:'Your message goes straight to '+kid()+'\u2019s family, and the curator adds it to the book.'}):
+      to?h('p',{},'Your signature goes by email to ',h('b',{text:to}),'. The curator adds it to the book.'):h('p',{class:'note',text:'The curator hasn\u2019t added an email address yet. Copy your signature and send it to them directly.'}),
+    h('div',{class:'row'},direct,h('button',{class:'btn',onclick:()=>go('guests')},'Back')),fb
   ]};
 };
 
@@ -537,7 +568,7 @@ function bindInput(cv){
 /* ---------- boot: everything comes from gallery.json ---------- */
 function readCfg(j){
   const t=j.totals&&typeof j.totals==='object'?j.totals:{};
-  S.cfg={title:str(j.title,50)||DEF.title,artist:str(j.artist,50)||DEF.artist,welcome:str(j.welcome,300),email:str(j.email,120),cause:str(j.cause,160),
+  S.cfg={title:str(j.title,50)||DEF.title,artist:str(j.artist,50)||DEF.artist,welcome:str(j.welcome,300),email:str(j.email,120),formKey:/^[\w-]{16,80}$/.test(str(j.formKey,80))?str(j.formKey,80):'',cause:str(j.cause,160),
     howToDonate:str(j.howToDonate,500),suggested:num(j.suggestedDonation),pretendGuests:j.pretendGuests==null?DEF.pretendGuests:num(j.pretendGuests),
     pledges:num(t.pledges),donated:num(t.donated),hours:num(t.volunteerHours)};
   S.book=(Array.isArray(j.guestbook)?j.guestbook:[]).slice(-300).map(e=>e&&typeof e==='object'&&str(e.name,60).trim()?{name:str(e.name,60).trim(),date:str(e.date,20),message:str(e.message,300)}:null).filter(Boolean);
