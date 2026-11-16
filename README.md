@@ -4,7 +4,8 @@ A walk-through 3D gallery that runs as a plain website. There is no database: ev
 
 - `index.html` is the gallery. You never need to edit it.
 - `gallery.json` is the list you edit: gallery name, your email, the pledge totals, and one entry per piece of art.
-- Your pictures sit next to those two files.
+- Your pictures go in the `art` folder.
+- `LICENSE` and `COPYRIGHT.md` say the code is MIT-licensed and the artwork is all rights reserved.
 
 ## First-time setup (about 10 minutes)
 
@@ -33,13 +34,13 @@ Open `gallery.json` on GitHub, press the pencil icon, edit, and press **Commit c
 
 1. Save a web-size copy of the scan: about 1600 pixels on the long side, JPG, under 500 KB. Keep the full-resolution original to yourself. This repository is public, so anything you upload here can be downloaded by anyone.
 2. Give the file a simple name such as `beach-dinosaur.jpg`.
-3. Upload it with **Add file > Upload files**, next to `index.html`.
+3. Open the `art` folder on GitHub, then choose **Add file > Upload files**. Uploading from inside the folder puts the picture there.
 4. Edit `gallery.json` and add an entry inside the `"art": [ ]` brackets:
 
 ```json
 "art": [
   {
-    "file": "beach-dinosaur.jpg",
+    "file": "art/beach-dinosaur.jpg",
     "title": "Dinosaur at the beach",
     "medium": "Crayon on construction paper",
     "year": "2026",
@@ -47,13 +48,13 @@ Open `gallery.json` on GitHub, press the pencil icon, edit, and press **Commit c
     "pledges": 0
   },
   {
-    "file": "rainbow.jpg",
+    "file": "art/rainbow.jpg",
     "title": "Rainbow, mostly"
   }
 ]
 ```
 
-Only `file` is required. Entries are separated by commas, and the last one has no comma after it. Pieces hang in the order they appear in the list, alternating left and right walls.
+Only `file` is required, and it must start with `art/`. Entries are separated by commas, and the last one has no comma after it. Pieces hang in the order they appear in the list, alternating left and right walls.
 
 ## Remove a piece
 
@@ -99,7 +100,7 @@ Add new entries at the end. The book shows the newest first, and the latest four
 
 ## Which picture to send
 
-Every pledge email names the piece twice: its title, and a "Picture file" line with the exact file name from `gallery.json` (for example `beach-dinosaur.jpg`). Keep your full-resolution originals under the same names and you can find the right one at a glance.
+Every pledge email names the piece twice: its title, and a "Picture file" line with the exact file name from `gallery.json` (for example `art/beach-dinosaur.jpg`). Keep your full-resolution originals under the same names and you can find the right one at a glance.
 
 ## How pledging works for guests
 
