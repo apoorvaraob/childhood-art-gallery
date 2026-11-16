@@ -116,6 +116,7 @@ button,input,textarea{font:inherit;color:inherit}
     <nav id="nav" aria-label="Gallery sections">
       <button class="tab" data-go="walk">Walk</button>
       <button class="tab" data-go="art">All art</button>
+      <button class="tab" id="tab-about" data-go="about" hidden>The artist</button>
       <button class="tab" data-go="board">Pledge board</button>
       <button class="tab" data-go="guests">Guest book</button>
     </nav>
@@ -165,7 +166,7 @@ const okFile=f=>typeof f==='string'&&/^[\w\-. /()]+\.(jpe?g|png|webp|gif)$/i.tes
 const okEmail=e=>typeof e==='string'&&/^[^\s@<>?&]+@[^\s@<>?&]+\.[a-z]{2,}$/i.test(e)&&!/example\.com$/i.test(e)?e:'';
 
 /* ---------- state ---------- */
-const DEF={formKey:'',title:"Leo's Art Gallery",artist:'Leo, Pre-K',welcome:'Walk the hall, pick a favorite, and pledge to bring a copy home.',email:'',cause:'',howToDonate:'',suggested:5,pretendGuests:5,pledges:0,donated:0,hours:0};
+const DEF={formKey:'',bio:[],title:"Leo's Art Gallery",artist:'Leo, Pre-K',welcome:'Walk the hall, pick a favorite, and pledge to bring a copy home.',email:'',cause:'',howToDonate:'',suggested:5,pretendGuests:5,pledges:0,donated:0,hours:0};
 const S={cfg:Object.assign({},DEF),book:[],arts:[],loaded:false,view:null,top:'walk',no3d:false};
 function samples(){
   return[['The sun has legs','Crayon on printer paper'],['Rainbow, mostly','Marker on construction paper'],['Us and the house','Crayon and pencil'],['A very fast scribble','Mixed crayons']]
@@ -290,6 +291,14 @@ VIEWS.board=function(){
   ]};
 };
 
+VIEWS.about=function(){
+  const b=S.cfg.bio;
+  return{title:'About the artist',body:[
+    h('div',{class:'placard'},h('span',{class:'t',text:kid()}),h('span',{class:'m',text:S.cfg.artist})),
+    b.length?b.map(p=>h('p',{text:p,style:'max-width:65ch'})):h('p',{class:'muted',text:'The curator hasn\u2019t added a bio yet.'}),
+    h('div',{class:'row'},h('button',{class:'btn go',onclick:()=>go('art')},'See the art'),h('button',{class:'btn',onclick:()=>openView('sign')},'Leave '+kid()+' a message'))
+  ]};
+};
 VIEWS.guests=function(){
   const list=S.book.slice().reverse();
   return{title:'Guest book',body:[
@@ -323,6 +332,7 @@ VIEWS.sign=function(){
 /* ---------- chrome ---------- */
 function applyCfg(){
   $('g-title').textContent=S.cfg.title;$('g-sub').textContent=S.cfg.artist;document.title=S.cfg.title;
+  $('tab-about').hidden=!S.cfg.bio.length;
   const n=guestCount();$('here').hidden=!n||S.no3d;$('here-n').textContent=n+(n===1?' cartoon guest':' cartoon guests');
 }
 function changed(){applyCfg();refresh();scheduleBuild();}
@@ -330,7 +340,7 @@ function note(msg){const n=$('notice');n.hidden=!msg;n.textContent=msg||'';}
 document.querySelectorAll('#nav .tab').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
 $('pclose').addEventListener('click',closePanel);
 $('here').addEventListener('click',()=>toast('The other visitors are cartoons, not real people.'));
-window.addEventListener('hashchange',()=>{const n=location.hash.slice(1);if(['walk','art','board','guests'].includes(n)&&n!==S.top)go(n);});
+window.addEventListener('hashchange',()=>{const n=location.hash.slice(1);if(['walk','art','about','board','guests'].includes(n)&&n!==S.top)go(n);});
 
 /* ---------- sample art + canvas textures ---------- */
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -418,6 +428,15 @@ function buildHall(){
     x.strokeStyle='#FFC619';x.lineWidth=14;x.lineCap='round';x.beginPath();for(let px=220;px<=804;px+=12){const py=y-60+Math.sin(px/26)*9;px===220?x.moveTo(px,py):x.lineTo(px,py);}x.stroke();
     x.font='400 44px '+BF;x.fillStyle='#5F5D73';x.fillText(cfg.artist,512,y+18);});
   const tp=plane(6,2.34,new THREE.MeshBasicMaterial({map:tt}));tp.rotation.y=Math.PI;tp.position.set(0,2.2,G.ZMAX-0.02);hall.add(tp);
+  /* wall text about the artist, first thing on the left wall */
+  if(cfg.bio.length){
+    const bt=ctex(600,800,(x,w,ht)=>{x.fillStyle='#fff';x.fillRect(0,0,w,ht);x.strokeStyle='#B9B6C6';x.lineWidth=4;x.strokeRect(2,2,w-4,ht-4);
+      x.fillStyle='#1B1A2E';x.font='400 54px '+DFNT;x.fillText('About the artist',36,84);
+      x.strokeStyle='#E4352B';x.lineWidth=8;x.lineCap='round';x.beginPath();for(let px=36;px<=300;px+=10){const py=112+Math.sin(px/18)*5;px===36?x.moveTo(px,py):x.lineTo(px,py);}x.stroke();
+      x.font='400 27px '+BF;let y=170;for(const p of cfg.bio){if(y>700)break;y=wrap(x,p,36,y,528,36,Math.max(1,Math.floor((720-y)/36)+1))+18;}
+      x.font='700 26px '+BF;x.fillStyle='#2A5CDB';x.fillText('Tap to read',36,768);});
+    const ab=plane(1.5,2.0,new THREE.MeshBasicMaterial({map:bt}));ab.rotation.y=Math.PI/2;ab.position.set(-W/2+0.02,1.65,-0.7);ab.userData.about=true;hall.add(ab);pickables.push(ab);
+  }
   /* artworks */
   const frames=[0x1B1A2E,0xE4352B,0x2A5CDB,0xFFC619,0x2B9A57],so=standoff();
   list.forEach((a,i)=>{
@@ -536,7 +555,8 @@ function updatePrompt(){
   if(!S.view){
     if(player.z<-G.L+4.2){if(player.x>1.2){act=()=>go('guests');label='Open the guest book';}else{act=()=>go('board');label='Open the pledge board';}}
     else{let best=null,bd=4.4;for(const s of spots){const d=Math.hypot(s.ax-player.x,s.az-player.z);if(d<bd){bd=d;best=s;}}
-      if(best){act=()=>openView('piece',best.id);label='Read the placard: '+best.title;}}
+      if(best){act=()=>openView('piece',best.id);label='Read the placard: '+best.title;}
+      const da=Math.hypot(-G.W/2-player.x,-0.7-player.z);if(S.cfg.bio.length&&da<5.3&&(!best||da<bd)){act=()=>go('about');label='Read about the artist';}}
   }
   promptAct=act;p.hidden=!act;if(act&&b.textContent!==label)b.textContent=label;
 }
@@ -555,7 +575,7 @@ function bindInput(cv){
     if(e.type==='pointerup'&&d.moved<10&&performance.now()-d.t<450){const r=cv.getBoundingClientRect();
       raycaster.setFromCamera({x:((e.clientX-r.left)/r.width)*2-1,y:-((e.clientY-r.top)/r.height)*2+1},camera);
       const hit=raycaster.intersectObjects(pickables,false)[0];
-      if(hit&&hit.distance<16){const u=hit.object.userData;if(u.artId)openView('piece',u.artId);else if(u.board)go('board');else if(u.book)go('guests');}}};
+      if(hit&&hit.distance<16){const u=hit.object.userData;if(u.artId)openView('piece',u.artId);else if(u.board)go('board');else if(u.book)go('guests');else if(u.about)go('about');}}};
   cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
   const j=$('joy'),knob=$('knob');let jid=null;
   const jm=e=>{const r=j.getBoundingClientRect();let dx=(e.clientX-(r.left+r.width/2))/38,dy=(e.clientY-(r.top+r.height/2))/38;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l;}joy.x=dx;joy.y=dy;knob.style.transform='translate('+dx*30+'px,'+dy*30+'px)';};
@@ -568,7 +588,7 @@ function bindInput(cv){
 /* ---------- boot: everything comes from gallery.json ---------- */
 function readCfg(j){
   const t=j.totals&&typeof j.totals==='object'?j.totals:{};
-  S.cfg={title:str(j.title,50)||DEF.title,artist:str(j.artist,50)||DEF.artist,welcome:str(j.welcome,300),email:str(j.email,120),formKey:/^[\w-]{16,80}$/.test(str(j.formKey,80))?str(j.formKey,80):'',cause:str(j.cause,160),
+  S.cfg={title:str(j.title,50)||DEF.title,artist:str(j.artist,50)||DEF.artist,welcome:str(j.welcome,300),bio:(Array.isArray(j.bio)?j.bio:[j.bio]).map(x=>str(x,700).trim()).filter(Boolean).slice(0,6),email:str(j.email,120),formKey:/^[\w-]{16,80}$/.test(str(j.formKey,80))?str(j.formKey,80):'',cause:str(j.cause,160),
     howToDonate:str(j.howToDonate,500),suggested:num(j.suggestedDonation),pretendGuests:j.pretendGuests==null?DEF.pretendGuests:num(j.pretendGuests),
     pledges:num(t.pledges),donated:num(t.donated),hours:num(t.volunteerHours)};
   S.book=(Array.isArray(j.guestbook)?j.guestbook:[]).slice(-300).map(e=>e&&typeof e==='object'&&str(e.name,60).trim()?{name:str(e.name,60).trim(),date:str(e.date,20),message:str(e.message,300)}:null).filter(Boolean);
@@ -588,7 +608,7 @@ async function boot(){
   }catch(e){}
   S.loaded=true;changed();
   if(S.no3d)go('art');
-  else{const n=location.hash.slice(1);if(['art','board','guests'].includes(n))go(n);else setTop('walk');}
+  else{const n=location.hash.slice(1);if(['art','about','board','guests'].includes(n))go(n);else setTop('walk');}
 }
 boot();
 })();

@@ -24,6 +24,7 @@ Open `gallery.json` on GitHub, press the pencil icon, edit, and press **Commit c
 | Line | What it does |
 |---|---|
 | `title`, `artist`, `welcome` | The gallery name, the artist line on every placard, and the welcome text. |
+| `bio` | The artist's bio, one paragraph per quoted line. It shows as wall text near the entrance and in **The artist** tab. Leave it as `[]` to hide both. |
 | `email` | Where pledges are sent. While it still says `example.com`, guests can only copy their pledge. Consider an address made just for the gallery, because it is visible to anyone who opens the site. |
 | `cause` | What pledges support, in a few words. |
 | `howToDonate` | How guests keep their pledge (for example, how to pay you or where to sign up to volunteer). Shown in the pledge steps. |
